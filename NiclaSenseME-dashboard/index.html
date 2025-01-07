@@ -109,6 +109,7 @@
       border-radius: 10px;
 
     }
+    
 
     a {
       color: white;
@@ -337,16 +338,7 @@
 </body>
 
 <script type="text/javascript">
-  /*
-  Demo showing simple dashboard of Arduino Nicla Sense ME (from the BLE Sense version)
-  
-  Based on: https://developers.google.com/web/updates/2015/07/interact-with-ble-devices-on-the-web
-  For earlier versions of Windows and Linux, you still have to go to chrome://flags/#enable-experimental-web-platform-features,
-  enable the highlighted flag, and restart Chrome for now.
-  */
-
   var maxRecords = 64;
-
   var NiclaSenseME =
   {
     temperature:
@@ -389,7 +381,7 @@
       properties: ['BLEWrite'],
       structure: ['Uint8', 'Uint8', 'Uint8'],
       data: { 'R': [], 'G': [], 'B': [] },
-      writeBusy: false, // we need to track this to avoid 'GATT operation in progress' errors
+      writeBusy: false, 
       writeValue: null
     },
     quaternion: {
@@ -397,7 +389,7 @@
       properties: ['BLENotify'],
       structure: ['Float32', 'Float32', 'Float32', 'Float32'],
       data: { 'x': [], 'y': [], 'z': [], 'w': [] },
-      writeBusy: false, // we need to track this to avoid 'GATT operation in progress' errors
+      writeBusy: false, 
       writeValue: null
     },
     bsec:
@@ -428,7 +420,7 @@
   var bytesReceived = 0;
   var bytesPrevious = 0;
 
-  // UI elements
+ 
   const pairButton = document.getElementById('pairButton');
   const BLEstatus = document.getElementById('bluetooth');
 
@@ -438,18 +430,17 @@
     pairButton.addEventListener('click', function (event) {
       connect();
     });
-    // else the browser doesn't support bluetooth
+    
   } else {
-    msg("browser not supported"); /*pairButton.style.backgroundColor = "red";*/
+    msg("browser not supported");
     snack("Error: This browser doesn't support Web Bluetooth. Try using Chrome.", 1);
   }
 
-  // Top middle information label
   function msg(m) {
     BLEstatus.innerHTML = m;
   }
 
-  //Top left pop up messaage
+
   function snack(m, warningLevel) {
     snackBar = document.getElementById("snackbar");
     snackBar.style.visibility = "visible";
@@ -475,7 +466,7 @@
     const device = await navigator.bluetooth.requestDevice({
       filters: [
         {
-          services: [SERVICE_UUID] // SERVICE_UUID
+          services: [SERVICE_UUID] 
         }
       ]
     });
@@ -487,16 +478,15 @@
     msg('getting primary service ...');
     const service = await server.getPrimaryService(SERVICE_UUID);
 
-    // Set up the characteristics
     for (const sensor of sensors) {
       msg('characteristic ' + sensor + "...");
       NiclaSenseME[sensor].characteristic = await service.getCharacteristic(NiclaSenseME[sensor].uuid);
-      // Set up notification
+      
       if (NiclaSenseME[sensor].properties.includes("BLENotify")) {
         NiclaSenseME[sensor].characteristic.addEventListener('characteristicvaluechanged', function (event) { handleIncoming(NiclaSenseME[sensor], event.target.value); });
         await NiclaSenseME[sensor].characteristic.startNotifications();
       }
-      // Set up polling for read
+
       if (NiclaSenseME[sensor].properties.includes("BLERead")) {
         NiclaSenseME[sensor].polling = setInterval(function () {
           NiclaSenseME[sensor].characteristic.readValue().then(function (data) { handleIncoming(NiclaSenseME[sensor], data); })
@@ -516,7 +506,7 @@
   }
 
   function handleIncoming(sensor, dataReceived) {
-    const columns = Object.keys(sensor.data); // column headings for this sensor
+    const columns = Object.keys(sensor.data); 
     const typeMap = {
       "Uint8": { fn: DataView.prototype.getUint8, bytes: 1 },
       "Uint16": { fn: DataView.prototype.getUint16, bytes: 2 },
@@ -526,22 +516,22 @@
     };
     var packetPointer = 0, i = 0;
 
-    // Read each sensor value in the BLE packet and push into the data array
+    
     sensor.structure.forEach(function (dataType) {
-      // Lookup function to extract data for given sensor property type
+      
       var dataViewFn = typeMap[dataType].fn.bind(dataReceived);
-      // Read sensor ouput value - true => Little Endian
+     
       var unpackedValue = dataViewFn(packetPointer, true);
-      // Push sensor reading onto data array
+     
       sensor.data[columns[i]].push(unpackedValue);
-      // Keep array at buffer size
+     
       if (sensor.data[columns[i]].length > maxRecords) { sensor.data[columns[i]].shift(); }
-      // move pointer forward in data packet to next value
+      
       packetPointer += typeMap[dataType].bytes;
       bytesReceived += typeMap[dataType].bytes;
       i++;
     });
-    sensor.rendered = false; // flag - vizualization needs to be updated
+    sensor.rendered = false; 
   }
 
   function onDisconnected(event) {
@@ -549,27 +539,27 @@
     pairButton.style.backgroundColor = "red";
     pairButton.innerHTML = "PAIR NICLA";
     snack("Device disconnected, please retry", 1)
-    // clear read polling
+
     for (const sensor of sensors) {
       if (typeof NiclaSenseME[sensor].polling !== 'undefined') {
         clearInterval(NiclaSenseME[sensor].polling);
       }
     }
-    // clear color picker write
+  
     const colorPickerElement = document.getElementById("color-picker-container");
     colorPickerElement.removeChild(colorPickerElement.firstChild);
 
     snack('Device ' + device.name + ' has been disconnected.', 1);
     msg("Disconnected");
 
-    // The board's LED will go red once it detects it has been disconnected
+    
     ledLight.color.setRGB(255,0,0);
     ledMaterial.color.setRGB(255,0,0);
   }
 
   function BLEwriteTo(sensor) {
-    if (NiclaSenseME[sensor].writeBusy) return; // dropping writes when one is in progress instead of queuing as LED is non-critical / realtime
-    NiclaSenseME[sensor].writeBusy = true; // Ensure no write happens when GATT operation in progress
+    if (NiclaSenseME[sensor].writeBusy) return; 
+    NiclaSenseME[sensor].writeBusy = true;
     NiclaSenseME[sensor].characteristic.writeValue(NiclaSenseME[sensor].writeValue)
       .then(_ => {
         NiclaSenseME[sensor].writeBusy = false;
@@ -599,11 +589,11 @@
       sliderHeight: 6,
       sliderMargin: 6
     });
-    // RGB Color Picker
+    // RGB Color
     NiclaSenseME.led.colorPicker.on('color:change', updateModelLed);
     function updateModelLed(color) {
       ledLight.color.setHex("0x" + color.hexString.substring(1, 7));
-      ledMaterial.color.set(color.hexString)   // where r, g, and b are 0 to 1
+      ledMaterial.color.set(color.hexString)   
       var rgb_values = Uint8Array.of(color.rgb.r, color.rgb.g, color.rgb.b);
       NiclaSenseME['led'].writeValue = rgb_values;
       BLEwriteTo('led');
@@ -612,7 +602,7 @@
     
   }
 
-  // Graphing
+  // Graph
   const colors = ["#FF355E", "#FD5B20", "#FF6037", "#FF9966", "#FF9933", "#FFCC33", "#FFFF66", "#FFFF66", "#CCFF00", "#66FF66", "#AAF0D1", "#50BFE6", "#FF6EFF", "#EE34D2", "#FF00CC", "#FF00CC"];
   var colorIndex = 0;
   function initGraph(sensor) {
@@ -666,9 +656,9 @@
     container.insertBefore(renderer.domElement, canvasDigits);
     renderer.domElement.style.margin = "9px";
     loader.load('models/niclaSenseME.glb',
-      // called when the Arduinio model is loaded
+    
       function (gltf) {
-        // Model
+        
         arduinoModel = gltf.scene;
         scene.add(arduinoModel);
 
@@ -687,11 +677,10 @@
         arduinoModel.add(ledObject);
         arduinoModel.add(ledLight);
 
-        arduinoModel.rotation.x = 90 * (Math.PI/180);  // Show the bottom side of the board by default
+        arduinoModel.rotation.x = 90 * (Math.PI/180);  
         
         var sphereSize = 1;
 
-        // Light
         const color = 0xFFFFFF;
         const intensity = 1;
         const light = new THREE.DirectionalLight(color, intensity);
@@ -702,7 +691,6 @@
         var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
         scene.add(hemiLight);
 
-        // Camera
         camera.position.set(0, 25, 0);
         camera.rotation.y = Math.PI; // 180
         camera.lookAt(new THREE.Vector3(0, 0, 0));
@@ -712,7 +700,6 @@
   }
 
   function colorBars(sensor) {
-    // Color + light
     const canvas = document.getElementById('colors');
     const ctx = canvas.getContext('2d');
     const thickness = canvas.width / maxRecords;
@@ -728,13 +715,11 @@
       ctx.fillRect(i * thickness, 128, thickness - 1, -total / 5);
     }
   }
-  // return last item of array
   Array.prototype.latest = function () { return this[this.length - 1]; };
 
   function graph(sensor) {
     var labels = Object.keys(NiclaSenseME[sensor].data);
     var values = [];
-    // after
     labels.forEach(function (label) {
       values.push(NiclaSenseME[sensor].data[label]);
     });
@@ -749,20 +734,18 @@
 
   function update3d(sensor) {
   
-    // Get the quaternion values
     var x = NiclaSenseME['quaternion'].data.x.latest();
     var y = NiclaSenseME['quaternion'].data.y.latest();
     var z = NiclaSenseME['quaternion'].data.z.latest();
     var w = NiclaSenseME['quaternion'].data.w.latest();
 
-    // Construct the quaternion object with the values and apply that to the 3D model
     const quaternion = new THREE.Quaternion(x, y, z, w);
     quaternion.normalize();
     arduinoModel.setRotationFromQuaternion(quaternion);
 
     renderer.render(scene, camera);
 
-    // Euler conversion, show the degrees below the 3D model
+   
     var rotation = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
 
     document.getElementById('xQuaternion').innerHTML = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
@@ -780,14 +763,14 @@
   var skip_frame = false;
   function draw() {
     function updateViz(sensor, fns) {
-      if (NiclaSenseME[sensor].rendered == false) { // only render if new values are received
+      if (NiclaSenseME[sensor].rendered == false) { 
         fns.forEach(function (fn) {
           fn(sensor);
         });
         NiclaSenseME[sensor].rendered = true;
       }
     }
-    if (skip_frame == false) { // TODO update with fuction to iterate object with viz function as a property
+    if (skip_frame == false) { 
       updateViz('accelerometer', [graph]);
       updateViz('gyroscope', [graph]);
       updateViz('temperature', [digit, graph]);
@@ -798,9 +781,9 @@
       updateViz('gas', [digit, graph]);
       updateViz('quaternion', [update3d]);
 
-      //bytes();  //Get the total amount of bytes received
+      
 
-      skip_frame = true; // render alternate frames = 30fps
+      skip_frame = true; 
     } else { skip_frame = false; }
     requestAnimationFrame(draw);
   }
