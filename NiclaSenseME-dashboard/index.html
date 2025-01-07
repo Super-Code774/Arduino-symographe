@@ -107,9 +107,25 @@
       color: #DAE3E3;
       padding-bottom: 16px;
       border-radius: 10px;
+      animation: popIn 0.5s ease-out forwards;
+      opacity: 0;
 
     }
-    
+    @keyframes popIn {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .container.scaled {
+    transform: scale(1.1);
+  }
 
     a {
       color: white;
